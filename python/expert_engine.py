@@ -15,6 +15,8 @@ from typing import Dict, List, Set, Optional
 
 
 class ExpertIdentityEngine:
+    # TODO(ml): Integrate Sentence-Transformers (all-MiniLM-L6-v2) for semantic name embedding comparison.
+    # TODO(pipeline): Add automated OFAC XML feed ingestion parser.
     def __init__(self):
         self.records: Dict[str, dict] = {}
         self.token_idf: Dict[str, float] = {}

@@ -37,6 +37,8 @@ type SearchResult struct {
 }
 
 // ExpertEngine is an industrial-grade identity resolution and screening system.
+// TODO(perf): Implement SIMD-accelerated Jaro-Winkler distance calculation.
+// TODO(scalability): Migrate map[string]set to distributed Redis bitsets for multi-node deployments.
 type ExpertEngine struct {
 	mu          sync.RWMutex
 	records     map[string]IdentityRecord
