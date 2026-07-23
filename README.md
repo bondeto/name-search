@@ -6,11 +6,50 @@ Engine ini dirancang untuk pencocokan identitas secara akurat dan cepat terhadap
 
 ---
 
+## 🧮 Formulasi Matematika & Algoritma Utama
+
+### 1. Hybrid Composite Name & Identity Score
+Skor akhir pencocokan identitas total ($Score_{\text{total}}$) dihitung secara probabilistik berdasarkan akumulasi bobot atribut:
+
+$$S_{\text{name}} = (w_1 \cdot S_{\text{phonetic}}) + (w_2 \cdot S_{\text{jarowinkler}}) + (w_3 \cdot S_{\text{token}})$$
+
+$$Score_{\text{total}} = w_{\text{name}} \cdot S_{\text{name}} + w_{\text{dob}} \cdot S_{\text{dob}} + w_{\text{passport}} \cdot S_{\text{passport}}$$
+
+Di mana $\sum w_i = 1.0$.
+
+---
+
+### 2. Inverse Document Frequency (IDF) Token Entropy Weighting
+Menentukan tingkat keunikan setiap kata untuk mencegah kata umum (*MOHAMMAD, SANTO, DE*) memicu *false positive*:
+
+$$\text{Weight}(w) = \log\left(\frac{N + 1}{\text{DocFreq}(w)}\right)$$
+
+$$\text{SoftTFIDF}(s_1, s_2, \theta) = \sum_{w \in s_1 \cap_{\theta} s_2} \text{TFIDF}(w, s_1) \cdot \text{TFIDF}(w', s_2) \cdot \text{Sim}(w, w')$$
+
+---
+
+### 3. Gaussian Date of Birth (DOB) Decay Function
+Peluruhan kontinyu selisih hari ($\Delta d = |T_{\text{query}} - T_{\text{candidate}}|$) menggunakan fungsi penalti Gaussian dengan $\sigma = 30\text{ hari}$:
+
+$$S_{\text{dob}} = \exp\left( -\frac{\Delta d^2}{2\sigma^2} \right)$$
+
+---
+
+### 4. Fellegi-Sunter Probabilistic Decision Model (Log-Odds)
+Teori pencocokan entitas berbasis akumulasi *log-likelihood ratio*:
+
+$$\text{LogOdds}_{\text{total}} = \sum_{i \in \{\text{Name}, \text{DOB}, \text{Passport}\}} \log_2\left(\frac{m_i}{u_i}\right)$$
+
+Di mana:
+* $m_i = P(\text{Atribut } i \text{ cocok} \mid \text{Pasangan Entitas Sama})$
+* $u_i = P(\text{Atribut } i \text{ cocok secara kebetulan} \mid \text{Pasangan Entitas Beda})$
+
+---
+
 ## 🔒 Fitur Enterprise & Validasi Identitas (Production Ready)
 
 ### 1. Parsing & Verifikasi Identitas Nasional
-Sistem dilengkapi modul otomatis untuk mengekstrak dan memverifikasi integritas 16-digit Nomor Identitas:
-* **Ekstraksi Demografi**: Tanggal lahir, jenis kelamin (pria/wanita), serta kode wilayah.
+* **Ekstraksi Demografi**: Tanggal lahir, jenis kelamin (pria/wanita), serta kode wilayah dari 16-digit ID.
 * **Verifikasi Silang (Cross-Verification)**: Menguji keselarasan tanggal lahir hasil dekoding nomor identitas terhadap tanggal lahir query.
 
 ### 2. Cryptographic Audit Trail (Non-Repudiation Logging)
@@ -28,9 +67,8 @@ Spesifikasi OpenAPI 3.0 ([`openapi.yaml`](file:///e:/app-bw/name-search/openapi.
 Selain dijalankan di layer *application microservice*, algoritma pencarian nama dan DOB dapat diterapkan langsung di berbagai *Database Management Engine*:
 
 ### 1. PostgreSQL (Rekomendasi RDBMS Utama)
-Memanfaatkan ekstensi native PostgreSQL untuk eksekusi pencarian sub-milidetik:
-* **Ekstensi `pg_trgm`**: Menggunakan indeks **GIN (Generalized Inverted Index)** `gin_trgm_ops` untuk *candidate blocking* dan fungsi `similarity()`.
-* **Ekstensi `fuzzystrmatch`**: Menyediakan fungsi fonetik `dmetaphone()` (Double Metaphone) dan `soundex()`.
+* **Ekstensi `pg_trgm`**: Indeks **GIN (Generalized Inverted Index)** `gin_trgm_ops` untuk *candidate blocking* dan `similarity()`.
+* **Ekstensi `fuzzystrmatch`**: Fungsi fonetik `dmetaphone()` (Double Metaphone) dan `soundex()`.
 * **Stored Function Hybrid Scorer**: Script SQL lengkap tersedia di [`sql/postgres_watchlist_search.sql`](file:///e:/app-bw/name-search/sql/postgres_watchlist_search.sql).
 
 ```sql
@@ -39,11 +77,8 @@ SELECT * FROM fn_screen_watchlist('MOHAMMED ALY KHAN', '1982-05-14', 0.70);
 ```
 
 ### 2. Elasticsearch / OpenSearch (Rekomendasi Distributed Search)
-* **Candidate Blocking**: Menggunakan `n-gram` tokenizer & plugin `analysis-phonetic` (`beider_morse` & `double_metaphone`).
-* **Rescoring Engine**: Memakai `script_score` berbasis *Painless Scripting* untuk mengombinasikan skor BM25 nama, selisih tanggal lahir, dan pembobotan *log-odds*.
-
-### 3. Redis Stack (RediSearch)
-* **In-Memory Vector Search**: Menggunakan `FT.CREATE` dengan indeks `TAG` dan `TEXT` *fuzzy matching* (`%name%`) untuk latensi ekstrem $< 1\text{ ms}$.
+* **Candidate Blocking**: `n-gram` tokenizer & plugin `analysis-phonetic` (`beider_morse` & `double_metaphone`).
+* **Rescoring Engine**: `script_score` (Painless Scripting) untuk kombinasi skor BM25 nama, selisih tanggal lahir, dan *log-odds*.
 
 ---
 
@@ -64,7 +99,7 @@ SELECT * FROM fn_screen_watchlist('MOHAMMED ALY KHAN', '1982-05-14', 0.70);
 
 ```text
 name-search/
-├── README.md                 # Dokumentasi & Sumber Referensi Ilmiah
+├── README.md                 # Dokumentasi & Formulasi Matematika Lengkap
 ├── openapi.yaml              # Spesifikasi REST API Enterprise (OpenAPI 3.0)
 ├── TODO.md                   # Roadmap & Backlog Features
 ├── .gitignore
@@ -82,22 +117,6 @@ name-search/
     ├── id_validation.go      # National ID Parser & Audit Logger (Go)
     ├── matcher_test.go       # Unit & Benchmark Test Suite (Go)
     └── go.mod
-```
-
----
-
-## 🚀 Pengujian & Penggunaan Modul Validasi Identitas
-
-### 1. Engine Go (ID Parser & Audit Trail)
-```bash
-cd go
-go run id_validation.go
-```
-
-### 2. Engine Python (ID Parser & Audit Trail)
-```bash
-cd python
-python id_validation.py
 ```
 
 ---
