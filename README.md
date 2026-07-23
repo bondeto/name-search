@@ -1,15 +1,38 @@
 # Identity Resolution & Fuzzy Name Matching Scorer (Government Ready)
 
-Project ini mengimplementasikan **Government-Grade Identity Resolution & Watchlist Screening Engine** dalam bahasa **Go** dan **Python**.
+Project ini mengimplementasikan **Government-Grade Identity Resolution & Watchlist Screening Engine** dalam bahasa **Go**, **Python**, dan **PostgreSQL SQL**.
 
 Engine ini dirancang untuk pencocokan identitas secara akurat dan cepat terhadap nama, tanggal lahir (DOB), dan Nomor Induk Kependudukan (NIK/KTP), berstandar instansi pemerintah (Imigrasi Cekal, Polri, PPATK, Bea Cukai).
+
+---
+
+## 🗄️ Implementasi Tingkat Basis Data (Database Level Implementation)
+
+Selain dijalankan di layer *application microservice*, algoritma pencarian nama dan DOB dapat diterapkan langsung di berbagai *Database Management Engine*:
+
+### 1. PostgreSQL (Rekomendasi RDBMS Utama)
+Memanfaatkan ekstensi native PostgreSQL untuk eksekusi pencarian sub-milidetik:
+* **Ekstensi `pg_trgm`**: Menggunakan indeks **GIN (Generalized Inverted Index)** `gin_trgm_ops` untuk *candidate blocking* dan fungsi `similarity()`.
+* **Ekstensi `fuzzystrmatch`**: Menyediakan fungsi fonetik `dmetaphone()` (Double Metaphone) dan `soundex()`.
+* **Stored Function Hybrid Scorer**: Script SQL lengkap tersedia di [`sql/postgres_watchlist_search.sql`](file:///e:/app-bw/name-search/sql/postgres_watchlist_search.sql).
+
+```sql
+-- Contoh Query Screening di PostgreSQL:
+SELECT * FROM fn_screen_watchlist('MOHAMMED ALY KHAN', '1982-05-14', 0.70);
+```
+
+### 2. Elasticsearch / OpenSearch (Rekomendasi Distributed Search)
+* **Candidate Blocking**: Menggunakan `n-gram` tokenizer & plugin `analysis-phonetic` (`beider_morse` & `double_metaphone`).
+* **Rescoring Engine**: Memakai `script_score` berbasis *Painless Scripting* untuk mengombinasikan skor BM25 nama, selisih tanggal lahir, dan pembobotan *log-odds*.
+
+### 3. Redis Stack (RediSearch)
+* **In-Memory Vector Search**: Menggunakan `FT.CREATE` dengan indeks `TAG` dan `TEXT` *fuzzy matching* (`%name%`) untuk latensi ekstrem $< 1\text{ ms}$.
 
 ---
 
 ## 🏛️ Fitur Kesiapan Instansi Pemerintah (Government-Readiness)
 
 ### 1. Parsing & Verifikasi Struktural NIK KTP Indonesia
-Sistem dilengkapi modul otomatis untuk mengekstrak dan memverifikasi integritas 16 digit NIK KTP:
 * **Ekstraksi Demografi**: Tanggal lahir, jenis kelamin (pria/wanita), serta kode wilayah (provinsi, kabupaten/kota, kecamatan).
 * **Verifikasi Silang (Cross-Verification)**: Menguji keselarasan tanggal lahir hasil dekoding NIK terhadap tanggal lahir query.
 
@@ -19,7 +42,7 @@ Setiap transaksi *screening* menghasilkan *log audit* terenkripsi SHA-256 yang *
 * Menyimpan hash PII query untuk menjaga kerahasiaan data privasi sesuai regulasi PDP (Pelindungan Data Pribadi).
 
 ### 3. Open API 3.0 Integration Standard
-Dilengkapi spesifikasi OpenAPI 3.0 ([`openapi.yaml`](file:///e:/app-bw/name-search/openapi.yaml)) untuk mempermudah integrasi *interoperabilitas* antar-instansi (*Enterprise Service Bus / API Gateway*).
+Spesifikasi OpenAPI 3.0 ([`openapi.yaml`](file:///e:/app-bw/name-search/openapi.yaml)) untuk integrasi *interoperabilitas* antar-instansi (*Enterprise Service Bus / API Gateway*).
 
 ---
 
@@ -47,6 +70,8 @@ name-search/
 ├── openapi.yaml              # Spesifikasi REST API Enterprise (OpenAPI 3.0)
 ├── TODO.md                   # Roadmap & Backlog Features
 ├── .gitignore
+├── sql/
+│   └── postgres_watchlist_search.sql  # Schema & Function Hybrid Scorer PostgreSQL
 ├── python/
 │   ├── matcher.py            # Basic Name Matcher (Python)
 │   ├── expert_engine.py      # Identity Resolution Engine (Python)
@@ -59,22 +84,6 @@ name-search/
     ├── gov_readiness.go      # KTP NIK Parser & ISO 27001 Audit Logger (Go)
     ├── matcher_test.go       # Unit & Benchmark Test Suite (Go)
     └── go.mod
-```
-
----
-
-## 🚀 Pengujian & Penggunaan Modul Government
-
-### 1. Engine Go (KTP Parser & Audit Trail)
-```bash
-cd go
-go run gov_readiness.go
-```
-
-### 2. Engine Python (KTP Parser & Audit Trail)
-```bash
-cd python
-python gov_readiness.py
 ```
 
 ---
