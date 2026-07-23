@@ -1,43 +1,25 @@
-# Identity Resolution & Fuzzy Name Matching Scorer
+# Identity Resolution & Fuzzy Name Matching Scorer (Expert Level)
 
-Dokumentasi dan implementasi *Intelligence-Grade Identity Resolution & Fuzzy Name Matching Engine*. Project ini mengimplementasikan pencocokan nama multi-layer (Phonetic, Edit Distance, dan Token Permutation) untuk sistem watchlist, cekal imigrasi, dan verifikasi identitas.
-
----
-
-## 💡 Rekomendasi Bahasa Pemrograman
-
-| Bahasa | Penggunaan Ideal | Keunggulan |
-| :--- | :--- | :--- |
-| **Python** *(Rekomendasi Utama)* | Prototyping, Data Science, & Service Umum | Ekosistem perpustakaan pencocokan string/NLP paling lengkap (`RapidFuzz`, `Jellyfish`, `Abydos`, `Metaphone`). |
-| **Go (Golang)** | Production Microservice High-Throughput | Performa eksekusi ekstrem, penggunaan memori sangat hemat, konkurensi (goroutines) untuk jutaan *lookup*/detik. |
-| **TypeScript / Node.js** | Integration Gateway / Fullstack Web App | Mudah diintegrasikan langsung ke API Gateway atau backend Node.js. |
+Project ini berisi implementasi **Intelligence-Grade Identity Resolution Engine** (setara sistem FBI NCIC, CIA HART, INTERPOL, & OFAC Sanctions Screening) untuk pencocokan nama dan tanggal lahir (DOB).
 
 ---
 
-## 🏛️ Arsitektur Hybrid Scoring
+## 🔬 Fitur Utama Engine (Expert Level)
 
-Sistem ini tidak mengandalkan 1 algoritma murni, melainkan mengombinasikan 3 pendekatan dengan bobot terkalkulasi:
-
-$$\text{Composite Score} = (w_{\text{phonetic}} \times S_{\text{phonetic}}) + (w_{\text{distance}} \times S_{\text{distance}}) + (w_{\text{token}} \times S_{\text{token}})$$
-
-```
-                                +-------------------+
-                                | Input Nama Search |
-                                +---------+---------+
-                                          |
-                        +-----------------+-----------------+
-                        |                 |                 |
-               +--------v-------+  +------v--------+  +-----v---------+
-               | DoubleMetaphone|  | Jaro-Winkler  |  |  Token Sort   |
-               | (Sound Match)  |  | (Edit Dist)   |  | (Word Order)  |
-               +--------+-------+  +------+--------+  +-----+---------+
-                        |                 |                 |
-                        +-----------------+-----------------+
-                                          |
-                               +----------v----------+
-                               | Composite Score %   |
-                               +---------------------+
-```
+1. **IDF Token Entropy Weighting**
+   - Menghitung bobot keunikan kata (*Inverse Document Frequency*). Kata umum seperti `"MOHAMMAD"`, `"AL"`, atau `"DE"` diberi penalti bobot rendah, sedangkan kata langka seperti `"ZULQARNAIN"` mendominasi kalkulasi skor.
+2. **Fuzzy Date of Birth (DOB) Decay Engine**
+   - Deteksi *Month/Day Swapping* (`1985-05-12` vs `1985-12-05`) dan kesalahan ketik tanggal.
+   - Fungsi peluruhan kontinu **Gaussian Decay** ($\sigma = 30\text{ hari}$) untuk mengukur deviasi selisih hari.
+   - Dukungan pencocokan parsial (*Wildcard DOB* `1985-00-00`).
+3. **Fellegi-Sunter Probabilistic Decision Engine**
+   - Mengakumulasi nilai *log-odds* antar-atribut (Nama, DOB, Paspor, Alias) berdasarkan teori statistik Fellegi-Sunter untuk *record linkage*.
+4. **Onomastic Prefix Stripping & Stemming**
+   - Pembersihan otomatis prefiks kebudayaan (*Al-*, *El-*, *Abdul-*, *Bin*, *Binti*, *Von*, *De*).
+5. **Sub-Millisecond Candidate Blocking (LSH / Inverted Index)**
+   - Menggunakan *Inverted Soundex/N-gram Bucket Indexing* untuk memangkas pencarian kandidat dari jutaan data menjadi $< 50$ data kandidat dalam waktu $< 2\text{ ms}$.
+6. **Alias Graph Network**
+   - Pemetaan relasi node alias (*Also Known As / AKA*).
 
 ---
 
@@ -45,12 +27,17 @@ $$\text{Composite Score} = (w_{\text{phonetic}} \times S_{\text{phonetic}}) + (w
 
 ```text
 name-search/
-├── README.md             # Dokumentasi Sistem & Artikel
+├── README.md                 # Blueprint & Dokumentasi Sistem
+├── .gitignore
 ├── python/
-│   ├── matcher.py        # Implementasi Engine Python
-│   └── requirements.txt  # Dependency Python
+│   ├── matcher.py            # Basic Engine (Python)
+│   ├── expert_engine.py      # Expert-Level Engine (Python)
+│   ├── test_matcher.py       # Unit Tests
+│   └── requirements.txt
 └── go/
-    ├── matcher.go        # Implementasi Engine Go (High Performance)
+    ├── matcher.go            # Basic Engine (Go)
+    ├── expert_engine.go      # Expert-Level Engine (Go)
+    ├── matcher_test.go       # Unit & Benchmark Tests
     └── go.mod
 ```
 
@@ -58,25 +45,24 @@ name-search/
 
 ## 📊 Threshold & Ambang Batas Decision
 
-| Skor % | Status Action | Tindakan Sistem |
+| Composite Score % | Status Signal | Tindakan Operasional |
 | :--- | :--- | :--- |
-| **$\ge 90\%$** | **CRITICAL MATCH** | Hold otomatis / Flag Red Light (Cekal/Watchlist Hit) |
-| **$75\% - 89\%$** | **POTENTIAL MATCH** | Antrean peninjauan manual (Secondary Inspection) |
-| **$< 75\%$** | **NO MATCH** | Pas lolos verifikasi |
+| **$\ge 88\%$** *(atau Paspor Match)* | **CRITICAL MATCH (RED)** | Hold / Block Otomatis / Red Flag Watchlist |
+| **$70\% - 87\%$** | **POTENTIAL MATCH (YELLOW)** | Escalate ke Secondary Analyst Review |
+| **$< 70\%$** | **NO MATCH (CLEAR)** | Pas Lolos Otomatis |
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Python Implementation
+### Run Python Expert Engine:
 ```bash
 cd python
-pip install -r requirements.txt
-python matcher.py
+python expert_engine.py
 ```
 
-### 2. Go Implementation
+### Run Go Expert Engine:
 ```bash
 cd go
-go run matcher.go
+go run .
 ```

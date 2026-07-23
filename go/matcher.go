@@ -259,7 +259,7 @@ func (m *NameMatcher) Match(inputName, candidateName string) MatchResult {
 	}
 }
 
-func main() {
+func RunBasicDemo() {
 	matcher := NewNameMatcher(0.3, 0.4, 0.3)
 
 	testCases := []struct {
