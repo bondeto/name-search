@@ -1,13 +1,13 @@
 openapi: 3.0.3
 info:
-  title: Government Identity Resolution & Screening API
-  description: Enterprise API Spesifikasi Layanan Pencarian & Screening Watchlist/Cekal untuk Instansi Pemerintah (Imigrasi, Polri, PPATK, Bea Cukai).
+  title: Enterprise Identity Resolution & Screening API
+  description: API Spesifikasi Layanan Pencarian & Screening Identity Matcher untuk Enterprise, FinTech, E-Commerce, dan Anti-Fraud Compliance.
   version: 1.0.0
 paths:
   /v1/screen:
     post:
       summary: Screening Identitas & Watchlist Lookup
-      description: Membandingkan identitas target terhadap basis data cekal dengan kalkulasi skor probabilistik dan generasi audit trail ISO 27001.
+      description: Membandingkan identitas target terhadap basis data dengan kalkulasi skor probabilistik dan generasi audit trail terenkripsi.
       requestBody:
         required: true
         content:
@@ -17,7 +17,7 @@ paths:
               required:
                 - full_name
                 - operator_id
-                - agency_code
+                - system_module
               properties:
                 full_name:
                   type: string
@@ -25,7 +25,7 @@ paths:
                 dob:
                   type: string
                   example: "1982-14-05"
-                nik:
+                identity_number:
                   type: string
                   example: "3171011505850001"
                 passport_no:
@@ -33,10 +33,10 @@ paths:
                   example: "A12345678"
                 operator_id:
                   type: string
-                  example: "OFFICER_9981"
-                agency_code:
+                  example: "OPERATOR_9981"
+                system_module:
                   type: string
-                  example: "IMIGRASI_CEKAL"
+                  example: "SCREENING_MODULE"
       responses:
         '200':
           description: Hasil Screening Berhasil
@@ -61,10 +61,10 @@ paths:
                         type: string
                       integrity_hash:
                         type: string
-  /v1/validate-nik:
+  /v1/validate-id:
     post:
-      summary: Validasi & Parser NIK KTP Indonesia
-      description: Ekstraksi struktur NIK 16 digit untuk verifikasi Tanggal Lahir, Jenis Kelamin, dan Kode Wilayah.
+      summary: Validasi & Parser National ID
+      description: Ekstraksi struktur 16 digit Nomor Identitas Nasional untuk verifikasi Tanggal Lahir, Jenis Kelamin, dan Kode Wilayah.
       requestBody:
         required: true
         content:
@@ -72,11 +72,11 @@ paths:
             schema:
               type: object
               required:
-                - nik
+                - identity_number
               properties:
-                nik:
+                identity_number:
                   type: string
                   example: "3171011505850001"
       responses:
         '200':
-          description: Hasil Validasi NIK
+          description: Hasil Validasi Identitas
